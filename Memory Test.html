@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Latihan Memori</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --danger: #ef4444;
+        }
+        
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+
+        #memory-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .timer {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--danger);
+            margin: 15px 0;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .option-btn {
+            background-color: #f1f5f9;
+            color: var(--text);
+            border: 1px solid #cbd5e1;
+            padding: 15px;
+            font-size: 1.1rem;
+        }
+
+        .option-btn:hover {
+            background-color: #e2e8f0;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .score-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="start-screen" class="screen active">
+        <h1>Latihan Memori Terfokus</h1>
+        <p>Anda akan diberikan 50 item acak beserta jumlahnya.</p>
+        <p>Waktu menghafal: <strong>5 Menit</strong>.</p>
+        <p>Setelah itu, Anda harus menjawab 50 pertanyaan. Waktu per soal: <strong>20 Detik</strong>.</p>
+        <button onclick="startMemorization()">Mulai Latihan</button>
+    </div>
+
+    <div id="memorize-screen" class="screen">
+        <h1>Hafalkan Item Berikut</h1>
+        <div class="timer" id="memorize-timer">05:00</div>
+        <div id="memory-list"></div>
+        <button class="btn-danger" onclick="startQuiz()">Lewati Waktu & Mulai Ujian</button>
+    </div>
+
+    <div id="quiz-screen" class="screen">
+        <div class="status-bar">
+            <span id="question-counter">Soal: 1/50</span>
+            <span id="quiz-timer" style="color: var(--danger);">Waktu: 20s</span>
+        </div>
+        <h2 id="question-text">Berapa jumlah ...?</h2>
+        <div class="options-grid" id="options-container">
+            </div>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <h1>Tes Selesai!</h1>
+        <p>Skor Akhir Anda:</p>
+        <div class="score-display" id="final-score">0 / 50</div>
+        <button onclick="resetGame()">Ulangi Tes (Acak Ulang)</button>
+    </div>
+</div>
+
+<script>
+    // Pool kata yang lebih dari 50 agar bisa diacak sempurna
+    const wordPool = [
+        "Baut", "Mur", "Obeng", "Pahat HSS", "Pahat Insert", "Mikrometer",
+        "Jangka Sorong", "Tap M12", "Material ST41", "Kunci Pas", "Kunci Ring",
+        "Kunci L", "Mata Bor", "Batu Gerinda", "Cairan Coolant", "Chuck Mesin",
+        "Senter Putar", "Senter Tetap", "Kacamata Safety", "Sarung Tangan",
+        "Palu Konde", "Palu Karet", "Tang Kombinasi", "Tang Potong", "Tang Jepit",
+        "Gergaji Besi", "Kikir Rata", "Kikir Bulat", "Kikir Segitiga", "Sikat Kawat",
+        "Minyak Pelumas", "Kain Majun", "Mistar Baja", "Busur Derajat", "Dial Indicator",
+        "Boring Bar", "Knurling Tool", "Countersink", "Reamer", "Center Drill",
+        "End Mill", "Face Mill", "Collet", "V-Block", "Clamp C", "Ragum",
+        "Kunci Inggris", "Kunci Pipa", "Obeng Plus", "Obeng Min", "Test Pen",
+        "Multitester", "Mata Snei", "Feeler Gauge", "Kunci Momen"
+    ];
+
+    let currentItems = [];
+    let questionOrder = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    
+    let memorizeInterval;
+    let quizInterval;
+    let timeLeft;
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    // Fungsi mengacak array (Fisher-Yates)
+    function shuffleArray(array) {
+        const arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function generateItems() {
+        // Ambil 50 item acak dari pool
+        const shuffledWords = shuffleArray(wordPool).slice(0, 50);
+        currentItems = shuffledWords.map(word => ({
+            name: word,
+            quantity: Math.floor(Math.random() * 20) + 1 // Kuantitas 1-20
+        }));
+        
+        // Acak urutan pertanyaan
+        questionOrder = shuffleArray([...currentItems]);
+    }
+
+    function startMemorization() {
+        generateItems();
+        
+        const listContainer = document.getElementById('memory-list');
+        listContainer.innerHTML = '';
+        currentItems.forEach(item => {
+            const div = document.createElement('div');
+            div.textContent = `${item.quantity} ${item.name}`;
+            listContainer.appendChild(div);
+        });
+
+        showScreen('memorize-screen');
+        
+        // Timer 5 menit (300 detik)
+        timeLeft = 300;
+        updateMemorizeTimerDisplay();
+        
+        clearInterval(memorizeInterval);
+        memorizeInterval = setInterval(() => {
+            timeLeft--;
+            updateMemorizeTimerDisplay();
+            if (timeLeft <= 0) {
+                clearInterval(memorizeInterval);
+                startQuiz();
+            }
+        }, 1000);
+    }
+
+    function updateMemorizeTimerDisplay() {
+        const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+        const seconds = (timeLeft % 60).toString().padStart(2, '0');
+        document.getElementById('memorize-timer').textContent = `${minutes}:${seconds}`;
+    }
+
+    function startQuiz() {
+        clearInterval(memorizeInterval);
+        currentQuestionIndex = 0;
+        score = 0;
+        showScreen('quiz-screen');
+        loadQuestion();
+    }
+
+    function generateOptions(correctAnswer) {
+        const options = new Set([correctAnswer]);
+        while (options.size < 4) {
+            // Buat jawaban pengecoh (+/- 5 dari jawaban asli)
+            let offset = Math.floor(Math.random() * 11) - 5;
+            if (offset === 0) offset = 1;
+            let wrongAnswer = correctAnswer + offset;
+            
+            if (wrongAnswer > 0) {
+                options.add(wrongAnswer);
+            } else {
+                options.add(correctAnswer + Math.floor(Math.random() * 5) + 1);
+            }
+        }
+        return shuffleArray(Array.from(options));
+    }
+
+    function loadQuestion() {
+        if (currentQuestionIndex >= 50) {
+            showResult();
+            return;
+        }
+
+        const currentItem = questionOrder[currentQuestionIndex];
+        document.getElementById('question-counter').textContent = `Soal: ${currentQuestionIndex + 1}/50`;
+        document.getElementById('question-text').textContent = `Berapa jumlah ${currentItem.name}?`;
+
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+        
+        const options = generateOptions(currentItem.quantity);
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.textContent = opt;
+            btn.onclick = () => handleAnswer(opt, currentItem.quantity);
+            optionsContainer.appendChild(btn);
+        });
+
+        // Setup timer 20 detik
+        timeLeft = 20;
+        document.getElementById('quiz-timer').textContent = `Waktu: ${timeLeft}s`;
+        clearInterval(quizInterval);
+        quizInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('quiz-timer').textContent = `Waktu: ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(quizInterval);
+                // Waktu habis dianggap salah, lanjut ke soal berikutnya
+                currentQuestionIndex++;
+                loadQuestion();
+            }
+        }, 1000);
+    }
+
+    function handleAnswer(selected, correct) {
+        clearInterval(quizInterval);
+        if (selected === correct) {
+            score++;
+        }
+        currentQuestionIndex++;
+        loadQuestion();
+    }
+
+    function showResult() {
+        showScreen('result-screen');
+        document.getElementById('final-score').textContent = `${score} / 50`;
+    }
+
+    function resetGame() {
+        showScreen('start-screen');
+    }
+</script>
+</body>
+</html>
